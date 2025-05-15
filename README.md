@@ -23,7 +23,7 @@ A GUI application to create, manage, and activate Python virtual environments wi
 
 ## How to Build the Executable (EXE)
 
-### Quick Build (Recommended)
+### Quick Build on Windows (Recommended)
 
 1. Make sure you have Python 3.6+ installed.
 2. Install PyInstaller (only needed for building the EXE):
@@ -35,6 +35,71 @@ A GUI application to create, manage, and activate Python virtual environments wi
    pyinstaller --onefile --windowed --icon=icon.ico PyVenvManager.py
    ```
    This will generate the standalone executable in the `dist` folder.
+
+### Quick Build on Linux (All Distributions)
+
+1. Make sure you have Python 3.6+ and Tkinter installed. For most distributions, install with:
+   - **Debian/Ubuntu:**
+     ```bash
+     sudo apt update && sudo apt install python3 python3-tk
+     ```
+   - **Fedora:**
+     ```bash
+     sudo dnf install python3 python3-tkinter
+     ```
+   - **Arch Linux/Manjaro:**
+     ```bash
+     sudo pacman -S python python-tk
+     ```
+2. Install PyInstaller:
+   ```bash
+   pip3 install pyinstaller
+   ```
+3. (Optional) If you want an app icon, use a PNG icon (e.g., icon.png). Not all Linux desktops support .ico files.
+4. Run the following command in the project directory:
+   ```bash
+   pyinstaller --onefile --windowed --icon=icon.ico PyVenvManager.py
+   ```
+   - If you get an error with the icon, try removing the `--icon=icon.ico` part or use a PNG icon: `--icon=icon.png`.
+5. The standalone executable will be created in the `dist/` directory (e.g., `dist/PyVenvManager`).
+6. Make the file executable if needed:
+   ```bash
+   chmod +x dist/PyVenvManager
+   ```
+7. Run the app:
+   ```bash
+   ./dist/PyVenvManager
+   ```
+
+**Note:** The Linux build must be done on a Linux system (or WSL). The Windows EXE will not run on Linux, and vice versa.
+
+### Quick Build on macOS
+
+1. Make sure you have Python 3.6+ and Tkinter installed. On most macOS systems, Tkinter is included by default. If not, you can install it with Homebrew:
+   ```bash
+   brew install python-tk
+   ```
+2. Install PyInstaller:
+   ```bash
+   pip3 install pyinstaller
+   ```
+3. (Optional) If you want an app icon, use a PNG or ICNS icon (e.g., icon.png or icon.icns). macOS does not support .ico files for app icons.
+4. Run the following command in the project directory:
+   ```bash
+   pyinstaller --onefile --windowed --icon=icon.icns PyVenvManager.py
+   ```
+   - If you get an error with the icon, try removing the `--icon=icon.icns` part or use a PNG icon: `--icon=icon.png`.
+5. The standalone executable will be created in the `dist/` directory (e.g., `dist/PyVenvManager`).
+6. Make the file executable if needed:
+   ```bash
+   chmod +x dist/PyVenvManager
+   ```
+7. Run the app:
+   ```bash
+   ./dist/PyVenvManager
+   ```
+
+**Note:** The macOS build must be done on a Mac. The Windows EXE and Linux binary will not run on macOS, and vice versa.
 
 ### Output EXE File
 
@@ -48,17 +113,18 @@ project-root/
 │   icon.ico
 ├── dist/
 │     └── PyVenvManager.exe   # <--- Generated EXE after build
-└── Direct_exe_prebuild/
-      └── PyVenvManager.exe   # <--- Prebuilt EXE (if provided)
+└── Os_name_Prebuild/
+      └── PyVenvManager.exe   # <--- Prebuilt EXE (if provided) 
 ```
+### Os_name_Prebuild such as windows_prebuild(folder), same linux_prebuild(folder) and mac_prebuild(folder)
 
 - The generated executable will be located at:
   ```
   dist\PyVenvManager.exe
   ```
-- A prebuilt executable is also available in the `Direct_exe_prebuild` folder:
+- A prebuilt executable is also available in the `Os_name_Prebuild` folder:
   ```
-  Direct_exe_prebuild\PyVenvManager.exe
+  Os_name_Prebuild\PyVenvManager.exe
   ```
 - You can move this file anywhere and double-click to run the application. No installation is required.
 
