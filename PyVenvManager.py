@@ -10,11 +10,36 @@ import threading
 import time
 
 class VirtualEnvManager:
+    # Application version
+    VERSION = "1.0.0"
+    
     def __init__(self, root):
         self.root = root
         self.root.title("Python Virtual Environment Manager")
         self.root.geometry("600x500")
         self.root.resizable(True, True)
+        
+        # Set icon if it exists
+        try:
+            # When running as exe, the icon is at the same level as the executable
+            icon_path = os.path.join(os.path.dirname(sys.executable), "icon.ico")
+            if not os.path.exists(icon_path):
+                # When running as script, the icon might be at the same level
+                icon_path = os.path.join(os.path.dirname(__file__), "icon.ico")
+            
+            if os.path.exists(icon_path):
+                self.root.iconbitmap(icon_path)
+        except Exception as e:
+            print(f"Could not set icon: {e}")
+        
+        # Create a menu
+        self.menu = tk.Menu(self.root)
+        self.root.config(menu=self.menu)
+        
+        # Help menu
+        help_menu = tk.Menu(self.menu, tearoff=0)
+        self.menu.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label="About", command=self.show_about)
         
         # Set theme colors
         self.colors = {
@@ -43,11 +68,18 @@ class VirtualEnvManager:
     
     def load_settings(self):
         """Load settings from JSON file or create defaults"""
-        default_venv_dir = os.path.join(os.path.expanduser("~"), "PyEnvManager")
+        # Create app data directory in AppData/Local (Windows) or .local/share (Linux)
+        if os.name == 'nt':
+            app_data_dir = os.path.join(os.getenv('LOCALAPPDATA'), "PyVenvManager")
+        else:
+            app_data_dir = os.path.join(os.path.expanduser("~"), ".local", "share", "PyVenvManager")
+        
+        # Create directory if it doesn't exist
+        os.makedirs(app_data_dir, exist_ok=True)
         
         # Default settings
         self.settings = {
-            "venv_dir": default_venv_dir,
+            "venv_dir": app_data_dir,
             "python_path": sys.executable,
             "theme": "light"
         }
@@ -101,23 +133,13 @@ class VirtualEnvManager:
         )
         self.title_label.pack(pady=5)
         
-        # Path display with change button
+        # Path display
         path_frame = ttk.Frame(main_frame)
         path_frame.pack(fill=tk.X, pady=5)
         
         ttk.Label(path_frame, text="Environments Path:").pack(side=tk.LEFT)
         self.path_label = ttk.Label(path_frame, text=self.venv_dir, font=("Courier", 9))
         self.path_label.pack(side=tk.LEFT, padx=5)
-        
-        tk.Button(
-            path_frame,
-            text="Change",
-            command=self.change_venv_dir,
-            bg=self.colors["accent"],
-            fg="white",
-            relief=tk.RAISED,
-            padx=10
-        ).pack(side=tk.RIGHT)
         
         # Notebook for tabs
         self.notebook = ttk.Notebook(main_frame)
@@ -175,7 +197,7 @@ class VirtualEnvManager:
         
         tk.Button(
             btn_frame, 
-            text="Import Existing",
+            text="Import",
             command=self.import_environment,
             bg=self.colors["secondary"],
             fg="white",
@@ -206,6 +228,23 @@ class VirtualEnvManager:
         # Settings tab
         settings_tab = ttk.Frame(self.notebook)
         self.notebook.add(settings_tab, text="Settings")
+        
+        # Environment directory settings
+        dir_frame = ttk.LabelFrame(settings_tab, text="Environment Directory")
+        dir_frame.pack(fill=tk.X, expand=False, pady=10, padx=10)
+        
+        ttk.Label(dir_frame, text="Current Directory:").pack(anchor=tk.W, padx=5, pady=5)
+        ttk.Label(dir_frame, text=self.venv_dir, font=("Courier", 9)).pack(anchor=tk.W, padx=15, pady=2)
+        
+        tk.Button(
+            dir_frame,
+            text="Change Directory",
+            command=self.change_venv_dir,
+            bg=self.colors["primary"],
+            fg="white",
+            relief=tk.RAISED,
+            padx=10
+        ).pack(anchor=tk.W, padx=5, pady=5)
         
         # Python executable settings
         py_frame = ttk.LabelFrame(settings_tab, text="Python Executable")
@@ -267,20 +306,6 @@ class VirtualEnvManager:
             relief=tk.RAISED,
             padx=10
         ).pack(side=tk.BOTTOM, pady=10)
-        
-        # Bottom buttons frame
-        bottom_frame = ttk.Frame(main_frame)
-        bottom_frame.pack(fill=tk.X, pady=10)
-        
-        tk.Button(
-            bottom_frame,
-            text="Exit",
-            command=self.exit_application,
-            bg=self.colors["accent"],
-            fg="white",
-            relief=tk.RAISED,
-            padx=10
-        ).pack(side=tk.RIGHT, padx=5)
         
         # Status bar with animation capability
         self.status_var = tk.StringVar()
@@ -576,17 +601,48 @@ class VirtualEnvManager:
         
         try:
             self.show_loading(f"Activating {env_name}")
+            
+            # Check if environment has a main file
+            env_settings_file = os.path.join(self.venv_dir, env_name, ".env_settings", "settings.json")
+            main_file = None
+            
+            if os.path.exists(env_settings_file):
+                try:
+                    with open(env_settings_file, 'r') as f:
+                        env_settings = json.load(f)
+                        main_file = env_settings.get("main_file")
+                except:
+                    pass
+            
             # Start a new terminal window with the activated environment
             if os.name == "nt":  # Windows
-                cmd_command = f'start cmd.exe /K "{activate_script} & echo Virtual environment \'{env_name}\' activated. Type \'deactivate\' to exit."'
+                if main_file and os.path.exists(main_file):
+                    # Run with main file
+                    cmd_command = f'start cmd.exe /K "{activate_script} && echo Virtual environment \'{env_name}\' activated. && python "{main_file}""'
+                else:
+                    # Normal activation without main file
+                    cmd_command = f'start cmd.exe /K "{activate_script} && echo Virtual environment \'{env_name}\' activated. Type \'deactivate\' to exit."'
+                
                 subprocess.run(cmd_command, shell=True)
             else:  # Unix/Linux/Mac
                 terminal_cmd = f"gnome-terminal --" if shutil.which("gnome-terminal") else "xterm -e"
-                cmd = f"{terminal_cmd} bash -c 'source \"{activate_script}\"; echo \"Virtual environment \'{env_name}\' activated. Type \'deactivate\' to exit.\"; exec bash'"
+                
+                if main_file and os.path.exists(main_file):
+                    # Run with main file
+                    cmd = f'{terminal_cmd} bash -c \'source "{activate_script}"; echo "Virtual environment \'{env_name}\' activated."; python "{main_file}"; exec bash\''
+                else:
+                    # Normal activation without main file
+                    cmd = f'{terminal_cmd} bash -c \'source "{activate_script}"; echo "Virtual environment \'{env_name}\' activated. Type \'deactivate\' to exit."; exec bash\''
+                
                 subprocess.run(cmd, shell=True)
             
             self.stop_loading()
             self.status_var.set(f"Activated '{env_name}' environment")
+            
+            # Add message if main file was executed
+            if main_file and os.path.exists(main_file):
+                self.status_var.set(f"Activated '{env_name}' and running {os.path.basename(main_file)}")
+                
         except Exception as e:
             self.stop_loading()
             self.status_var.set(f"Error: {str(e)}")
@@ -785,20 +841,75 @@ class VirtualEnvManager:
     
     def _import_env_thread(self, source_dir, target_dir, name):
         """Thread function to import environment"""
-        self.show_loading(f"Importing environment as '{name}'")
+        # Start the loading animation in the main thread 
+        self.root.after(0, lambda: self.show_loading(f"Importing environment as '{name}'"))
         
         try:
-            # Copy the environment
+            # Small delay to ensure loading animation appears
+            time.sleep(0.5)
+            
+            # Copy the environment (this can take time for larger environments)
             shutil.copytree(source_dir, target_dir)
             
+            # Find main Python file if exists (common names)
+            main_file = None
+            for common_name in ["main.py", "app.py", "run.py", "start.py", "__main__.py"]:
+                potential_main = os.path.join(target_dir, common_name)
+                if os.path.exists(potential_main):
+                    main_file = potential_main
+                    break
+                    
+            # If found, store it in env settings
+            if main_file:
+                env_settings_dir = os.path.join(target_dir, ".env_settings")
+                os.makedirs(env_settings_dir, exist_ok=True)
+                
+                env_settings = {
+                    "main_file": main_file
+                }
+                
+                with open(os.path.join(env_settings_dir, "settings.json"), 'w') as f:
+                    json.dump(env_settings, f)
+            
+            # Stop loading and update UI in the main thread
+            self.root.after(0, lambda: self.stop_loading())
             self.root.after(0, lambda: self.status_var.set(f"Environment imported as '{name}'"))
             self.root.after(0, self.refresh_env_list)
             
+            # Ask if user wants to delete the original environment
+            self.root.after(100, lambda: self._ask_delete_original(source_dir, name))
+            
         except Exception as e:
+            self.root.after(0, lambda: self.stop_loading())
             self.root.after(0, lambda: messagebox.showerror("Import Failed", str(e)))
             self.root.after(0, lambda: self.status_var.set("Environment import failed"))
-        finally:
-            self.stop_loading()
+        
+    def _ask_delete_original(self, source_dir, env_name):
+        """Ask if user wants to delete the original environment after import"""
+        if messagebox.askyesno("Delete Original", 
+                               f"Environment '{env_name}' has been imported successfully. "
+                               f"Do you want to delete the original environment at:\n{source_dir}?"):
+            # Show loading animation before starting deletion
+            self.root.after(0, lambda: self.show_loading(f"Deleting original environment at {source_dir}"))
+            
+            # Use a separate thread for deletion to keep UI responsive
+            threading.Thread(target=self._delete_original_thread, args=(source_dir, env_name)).start()
+    
+    def _delete_original_thread(self, source_dir, env_name):
+        """Thread to delete original environment after import"""
+        try:
+            # Small delay to ensure loading animation appears
+            time.sleep(0.5)
+            
+            # Delete the environment
+            shutil.rmtree(source_dir)
+            
+            self.root.after(0, lambda: self.stop_loading())
+            self.root.after(0, lambda: self.status_var.set(f"Original environment deleted. '{env_name}' imported successfully."))
+        except Exception as e:
+            self.root.after(0, lambda: self.stop_loading())
+            self.root.after(0, lambda: messagebox.showerror("Deletion Error", f"Could not delete original environment: {e}"))
+            self.root.after(0, lambda: self.status_var.set(f"Import successful, but could not delete original environment."))
     
     def delete_environment(self):
         """Delete the selected environment"""
@@ -821,20 +932,24 @@ class VirtualEnvManager:
     
     def _delete_env_thread(self, env_path, env_name):
         """Thread function to delete environment"""
-        self.show_loading(f"Deleting environment '{env_name}'")
+        # Start the loading animation in the main thread
+        self.root.after(0, lambda: self.show_loading(f"Deleting environment '{env_name}'"))
         
         try:
+            # Small delay to ensure loading animation appears
+            time.sleep(0.5)
+            
             # Delete the environment
             shutil.rmtree(env_path)
             
+            self.root.after(0, lambda: self.stop_loading())
             self.root.after(0, lambda: self.status_var.set(f"Environment '{env_name}' deleted"))
             self.root.after(0, self.refresh_env_list)
             
         except Exception as e:
+            self.root.after(0, lambda: self.stop_loading())
             self.root.after(0, lambda: messagebox.showerror("Deletion Failed", str(e)))
             self.root.after(0, lambda: self.status_var.set("Environment deletion failed"))
-        finally:
-            self.stop_loading()
     
     def change_venv_dir(self):
         """Change the directory where virtual environments are stored"""
@@ -853,6 +968,15 @@ class VirtualEnvManager:
         if self.save_settings():
             self.status_var.set(f"Environment directory changed to {new_dir}")
             self.refresh_env_list()
+              # Update the display in settings tab
+            for child in self.root.winfo_children():
+                if isinstance(child, ttk.Notebook):
+                    for tab in child.winfo_children():
+                        for frame in tab.winfo_children():
+                            if isinstance(frame, ttk.LabelFrame) and frame.winfo_children():
+                                for label in frame.winfo_children():
+                                    if isinstance(label, ttk.Label) and self.venv_dir in str(label.cget("text")):
+                                        label.config(text=self.venv_dir)
     
     def save_settings_from_ui(self):
         """Save settings from UI elements"""
@@ -863,22 +987,69 @@ class VirtualEnvManager:
             messagebox.showinfo("Settings Saved", "Your settings have been saved successfully")
             self.status_var.set("Settings saved")
     
-    def exit_application(self):
-        """Clean exit the application"""
-        # Stop animations
-        self.animation_running = False
-        if hasattr(self, 'loading'):
-            self.loading = False
-            
-        # Wait for threads to finish
-        if hasattr(self, 'animation_thread') and self.animation_thread and self.animation_thread.is_alive():
-            self.animation_thread.join(timeout=0.5)
-            
-        if hasattr(self, 'loading_thread') and self.loading_thread and self.loading_thread.is_alive():
-            self.loading_thread.join(timeout=0.5)
-            
-        # Close the application
-        self.root.destroy()
+    def show_about(self):
+        """Show the About dialog"""
+        about_window = tk.Toplevel(self.root)
+        about_window.title("About Python Virtual Environment Manager")
+        about_window.geometry("400x300")
+        about_window.resizable(False, False)
+        about_window.transient(self.root)
+        about_window.grab_set()
+        
+        # Try to use the same icon
+        try:
+            if hasattr(self.root, 'iconbitmap') and self.root._w + "Icon" in self.root.children:
+                about_window.iconbitmap(self.root.iconbitmap())
+        except:
+            pass
+        
+        frame = ttk.Frame(about_window, padding=20)
+        frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Title
+        ttk.Label(
+            frame, 
+            text="Python Virtual Environment Manager", 
+            font=("Helvetica", 14, "bold"),
+            foreground=self.colors["primary"]
+        ).pack(pady=(0, 10))
+        
+        # Version
+        ttk.Label(
+            frame,
+            text=f"Version {self.VERSION}",
+            font=("Helvetica", 10)
+        ).pack()
+        
+        # Description
+        description = """
+A tool to create, manage, and activate Python virtual environments
+with an easy-to-use graphical interface.
+        """
+        ttk.Label(
+            frame,
+            text=description,
+            justify=tk.CENTER,
+            wraplength=350
+        ).pack(pady=10)
+        
+        # Copyright
+        ttk.Label(
+            frame,
+            text=f"© {time.strftime('%Y')} PyVenvManager",
+            font=("Helvetica", 8)
+        ).pack(pady=(10, 5))
+        
+        # Close button
+        tk.Button(
+            frame,
+            text="OK",
+            command=about_window.destroy,
+            bg=self.colors["primary"],
+            fg="white",
+            relief=tk.RAISED,
+            padx=20
+        ).pack(pady=10)
 
 if __name__ == "__main__":
     root = tk.Tk()
