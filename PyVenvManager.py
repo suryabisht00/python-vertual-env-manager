@@ -317,7 +317,11 @@ class VirtualEnvManager:
             anchor=tk.W
         )
         self.status_bar.pack(fill=tk.X, side=tk.BOTTOM, pady=5)
-        
+
+        # Remove the inline progress bar from the main window
+        self.progress = None
+        self.progress_dialog = None
+
         # Start title animation
         self.start_title_animation()
     
@@ -515,32 +519,55 @@ class VirtualEnvManager:
             self.animation_running = False
     
     def show_loading(self, message="Loading..."):
-        """Show loading animation in status bar"""
-        if hasattr(self, "loading_thread") and self.loading_thread is not None:
-            return
-        
+        """Show a modal progress dialog with a progress bar"""
+        if getattr(self, 'progress_dialog', None) is not None:
+            return  # Already showing
+        def create_dialog():
+            self.progress_dialog = tk.Toplevel(self.root)
+            self.progress_dialog.title("Please Wait")
+            self.progress_dialog.geometry("350x100")
+            self.progress_dialog.resizable(False, False)
+            self.progress_dialog.transient(self.root)
+            self.progress_dialog.grab_set()
+            self.progress_dialog.protocol("WM_DELETE_WINDOW", lambda: None)  # Disable close
+            label = ttk.Label(self.progress_dialog, text=message, anchor=tk.CENTER, font=("Segoe UI", 11))
+            label.pack(pady=(20, 10), padx=10)
+            self.progress = ttk.Progressbar(self.progress_dialog, mode="indeterminate")
+            self.progress.pack(fill=tk.X, padx=20, pady=(0, 15))
+            self.progress.start(10)
+        self.root.after(0, create_dialog)
         self.loading = True
         self.loading_thread = threading.Thread(target=self.run_loading_animation, args=(message,))
         self.loading_thread.daemon = True
         self.loading_thread.start()
+
+    def stop_loading(self):
+        """Stop the loading animation and close the progress dialog"""
+        self.loading = False
+        def close_dialog():
+            if getattr(self, 'progress', None) is not None:
+                self.progress.stop()
+            if getattr(self, 'progress_dialog', None) is not None:
+                self.progress_dialog.grab_release()
+                self.progress_dialog.destroy()
+                self.progress_dialog = None
+            self.progress = None
+        self.root.after(0, close_dialog)
     
     def run_loading_animation(self, message):
-        """Run the loading animation"""
+        """Run the loading animation for the modal progress dialog"""
         dots = [".", "..", "..."]
         i = 0
         try:
-            while self.loading and hasattr(self, "status_var"):
-                self.status_var.set(f"{message} {dots[i % len(dots)]}")
+            while self.loading and getattr(self, 'progress_dialog', None) is not None:
+                if getattr(self, 'progress_dialog', None) is not None:
+                    for widget in self.progress_dialog.winfo_children():
+                        if isinstance(widget, ttk.Label):
+                            widget.config(text=f"{message} {dots[i % len(dots)]}")
                 time.sleep(0.3)
                 i += 1
-        except:
+        except Exception:
             pass
-        finally:
-            self.loading_thread = None
-    
-    def stop_loading(self):
-        """Stop the loading animation"""
-        self.loading = False
     
     def refresh_env_list(self):
         """Refresh the list of available virtual environments"""
@@ -841,13 +868,11 @@ class VirtualEnvManager:
     
     def _import_env_thread(self, source_dir, target_dir, name):
         """Thread function to import environment"""
-        # Start the loading animation in the main thread 
+        # Always show loading from main thread
         self.root.after(0, lambda: self.show_loading(f"Importing environment as '{name}'"))
-        
         try:
             # Small delay to ensure loading animation appears
             time.sleep(0.5)
-            
             # Copy the environment (this can take time for larger environments)
             shutil.copytree(source_dir, target_dir)
             
@@ -872,7 +897,7 @@ class VirtualEnvManager:
                     json.dump(env_settings, f)
             
             # Stop loading and update UI in the main thread
-            self.root.after(0, lambda: self.stop_loading())
+            self.root.after(0, self.stop_loading)
             self.root.after(0, lambda: self.status_var.set(f"Environment imported as '{name}'"))
             self.root.after(0, self.refresh_env_list)
             
@@ -880,7 +905,7 @@ class VirtualEnvManager:
             self.root.after(100, lambda: self._ask_delete_original(source_dir, name))
             
         except Exception as e:
-            self.root.after(0, lambda: self.stop_loading())
+            self.root.after(0, self.stop_loading)
             self.root.after(0, lambda: messagebox.showerror("Import Failed", str(e)))
             self.root.after(0, lambda: self.status_var.set("Environment import failed"))
         
@@ -904,10 +929,10 @@ class VirtualEnvManager:
             # Delete the environment
             shutil.rmtree(source_dir)
             
-            self.root.after(0, lambda: self.stop_loading())
+            self.root.after(0, self.stop_loading)
             self.root.after(0, lambda: self.status_var.set(f"Original environment deleted. '{env_name}' imported successfully."))
         except Exception as e:
-            self.root.after(0, lambda: self.stop_loading())
+            self.root.after(0, self.stop_loading)
             self.root.after(0, lambda: messagebox.showerror("Deletion Error", f"Could not delete original environment: {e}"))
             self.root.after(0, lambda: self.status_var.set(f"Import successful, but could not delete original environment."))
     
@@ -932,9 +957,8 @@ class VirtualEnvManager:
     
     def _delete_env_thread(self, env_path, env_name):
         """Thread function to delete environment"""
-        # Start the loading animation in the main thread
+        # Always show loading from main thread
         self.root.after(0, lambda: self.show_loading(f"Deleting environment '{env_name}'"))
-        
         try:
             # Small delay to ensure loading animation appears
             time.sleep(0.5)
@@ -942,12 +966,12 @@ class VirtualEnvManager:
             # Delete the environment
             shutil.rmtree(env_path)
             
-            self.root.after(0, lambda: self.stop_loading())
+            self.root.after(0, self.stop_loading)
             self.root.after(0, lambda: self.status_var.set(f"Environment '{env_name}' deleted"))
             self.root.after(0, self.refresh_env_list)
             
         except Exception as e:
-            self.root.after(0, lambda: self.stop_loading())
+            self.root.after(0, self.stop_loading)
             self.root.after(0, lambda: messagebox.showerror("Deletion Failed", str(e)))
             self.root.after(0, lambda: self.status_var.set("Environment deletion failed"))
     
