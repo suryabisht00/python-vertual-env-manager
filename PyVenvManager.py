@@ -1075,6 +1075,11 @@ with an easy-to-use graphical interface.
             padx=20
         ).pack(pady=10)
 
+        # To build a standalone Windows executable for non-Python users:
+        # 1. Install pyinstaller: pip install pyinstaller
+        # 2. Run: pyinstaller --onefile --windowed --icon=icon.ico PyVenvManager.py
+        # 3. The .exe will be in the 'dist' folder.
+
 if __name__ == "__main__":
     root = tk.Tk()
     app = VirtualEnvManager(root)

@@ -15,6 +15,11 @@ A GUI application to create, manage, and activate Python virtual environments wi
 - Threaded operations for responsive UI
 - Settings persistence across sessions
 
+## Requirements
+
+- Python 3.6 or higher (with Tkinter, included by default in standard Python distributions)
+- No external Python packages required
+
 ## Installation
 
 ### Windows Installer (Recommended)
