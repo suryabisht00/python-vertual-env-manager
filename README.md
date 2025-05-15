@@ -18,79 +18,71 @@ A GUI application to create, manage, and activate Python virtual environments wi
 ## Requirements
 
 - Python 3.6 or higher (with Tkinter, included by default in standard Python distributions)
-- No external Python packages required
+- No external Python packages required to run
+- See `requirement.txt` for build requirements
 
-## Installation
+## How to Build the Executable (EXE)
 
-### Windows Installer (Recommended)
+### Quick Build (Recommended)
 
-1. Download the latest installer (PyVenvManagerSetup.exe) from the releases page
-2. Run the installer and follow the instructions
-3. Launch the application from the Start Menu or desktop shortcut
+1. Make sure you have Python 3.6+ installed.
+2. Install PyInstaller (only needed for building the EXE):
+   ```powershell
+   pip install pyinstaller
+   ```
+3. Run the following command in the project directory:
+   ```powershell
+   pyinstaller --onefile --windowed --icon=icon.ico PyVenvManager.py
+   ```
+   This will generate the standalone executable in the `dist` folder.
 
-### Standalone Executable
+### Output EXE File
 
-1. Download the executable file (PyVenvManager.exe) from the releases page
-2. Place it in any folder where you have write permissions
-3. Double-click to run the application
+After building, your project directory structure will look like this:
 
-## Building from Source
-
-### Prerequisites
-
-- Python 3.6 or higher
-- pip (Python package installer)
-
-### Quick Build (Using the Build Script)
-
-1. Clone or download this repository
-2. Open a command prompt or PowerShell in the project directory
-3. Run the build script:
-
-```powershell
-.\build.bat
+```
+project-root/
+│   PyVenvManager.py
+│   README.md
+│   requirement.txt
+│   icon.ico
+├── dist/
+│     └── PyVenvManager.exe   # <--- Generated EXE after build
+└── Direct_exe_prebuild/
+      └── PyVenvManager.exe   # <--- Prebuilt EXE (if provided)
 ```
 
-4. Choose a build method from the menu:
-   - Option 1: Simple build (executable only using PyInstaller)
-   - Option 2: GUI builder (user-friendly interface with auto-py-to-exe)
-   - Option 3: Full installer (creates a complete Windows installer using NSIS)
+- The generated executable will be located at:
+  ```
+  dist\PyVenvManager.exe
+  ```
+- A prebuilt executable is also available in the `Direct_exe_prebuild` folder:
+  ```
+  Direct_exe_prebuild\PyVenvManager.exe
+  ```
+- You can move this file anywhere and double-click to run the application. No installation is required.
 
-### Manual Build Methods
+### Notes
+- The `icon.ico` file is used for the application icon. If you want to change it, replace `icon.ico` in the project directory.
+- No external dependencies are required for running the EXE; all modules are from the Python standard library.
 
-#### Method 1: Simple Build (PyInstaller)
+## Quick Start
 
-```powershell
-python simple_build.py
-```
+### Run the Executable Directly
 
-The executable will be created in the `dist` folder and copied to the current directory.
+1. Download or clone this repository.
+2. In the `dist` folder, locate `PyVenvManager.exe` (or use the provided `PyVenvManager.exe` in the root if available).
+3. Double-click `PyVenvManager.exe` to launch the application.  
+   *No installation or setup required.*
 
-#### Method 2: GUI Builder (auto-py-to-exe)
+### Select UI Theme
 
-```powershell
-python gui_builder.py
-```
-
-This will open a user-friendly interface where you can customize build options.
-
-#### Method 3: Full Installer Build (NSIS)
-
-```powershell
-python installer.py
-```
-
-This creates a complete Windows installer (PyVenvManagerSetup.exe) that will:
-- Install the application to Program Files
-- Create Start Menu shortcuts
-- Create Desktop shortcut
-- Register for uninstallation in Control Panel
-
-**Note**: This method requires NSIS (Nullsoft Scriptable Install System) to be installed.
+- After launching the application, go to the Settings tab.
+- Choose your preferred UI theme (Light/Dark) and customize colors as desired.
 
 ## Usage
 
-1. Launch the application
+1. Launch the application (see "Quick Start" above to run the EXE directly).
 2. Use the "Create New" button to create a new virtual environment:
    - Enter a name for the environment
    - Select a Python executable (optional)
@@ -110,6 +102,12 @@ The application allows customizing:
 - UI colors (primary, secondary, background, text, accent)
 - Default Python executable
 - Environment storage location
+
+## Requirements File
+
+A `requirement.txt` file is included for reference.  
+No external dependencies are required to run; all modules are from the Python standard library.  
+To build the EXE, install `pyinstaller` as listed in `requirement.txt`.
 
 ## License
 
