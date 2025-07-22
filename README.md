@@ -1,5 +1,8 @@
 # Python Virtual Environment Manager
 
+![Image](images_for_readme/Demo.png)
+<hr/>
+
 A GUI application to create, manage, and activate Python virtual environments with an easy-to-use interface.
 
 ## Features
